@@ -26,7 +26,6 @@ class BeanstalkdQueue
     const QUEUE_EMAIL = 'email';
     const QUEUE_LOG = 'log';
     const QUEUE_NOTIFY = 'notify';
-    const QUEUE_NOTIFY_LOG = 'notifylog';
 
     // priority
     const PRI_URGENT = 0;
@@ -58,7 +57,7 @@ class BeanstalkdQueue
     /**
      * search queue
      */
-    public function listQueue($queuePrefix = '')
+    public function listQueues($queuePrefix = '')
     {
         $tubes = $this->pheanstalk->listTubes();
 
@@ -132,26 +131,26 @@ class BeanstalkdQueue
     }
 
     /**
-     * 获取一个队列状态
+     * 统计队列的相关信息
      */
-    public function getQueueStats($queueName)
+    public function statsQueue($queueName)
     {
         return $this->pheanstalk->statsTube($queueName);
     }
 
     /**
-     * 获取一个队列中等待任务的长度
+     * 获取一个队列中状态为 ready 的 job 数量
      */
-    public function getQueueLength($queueName)
+    public function getQueueReadyJobs($queueName)
     {
-        $stats = $this->getQueueStats($queueName);
+        $data = $this->statsQueue($queueName);
 
-        return $stats['current-jobs-ready'];
+        return $data['current-jobs-ready'];
     }
 
 
     public function close()
     {
-        $this->pheanstalk->getConnection->disconnect();
+        $this->pheanstalk->getConnection()->disconnect();
     }
 }
