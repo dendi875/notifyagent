@@ -21,6 +21,8 @@ class NotifyAgent
 
     private static $instance;
 
+    private $queue;
+
     public static function getInstance()
     {
         if (static::$instance === null) {
@@ -33,36 +35,36 @@ class NotifyAgent
 
     private function __construct()
     {
-
+        $this->queue = BeanstalkdQueue::create(BeanstalkdQueue::MQ_SERVER);
     }
 
     /**
      * 增加一个 notify 通知
      *
-     * @param NotifyMessage $message
+     * @param NotifyMessage $notifyMessage
      * @return mixed
      * @throws LogicException
      */
-    public function addNotify(NotifyMessage $message)
+    public function addNotify(NotifyMessage $notifyMessage)
     {
         // 如果不需要应答，则只通知一次
-        if (NotifyMessage::NEED_RESPONSE_NO === $message->getNeedResponse()) {
-            $message->setRunOnce(NotifyMessage::RUN_ONCE_YES);
+        if (NotifyMessage::NEED_RESPONSE_NO === $notifyMessage->getNeedResponse()) {
+            $notifyMessage->setRunOnce(NotifyMessage::RUN_ONCE_YES);
         }
 
         // 如果指定了发送时间，并且发送时间比当前时间要大，则不是立即发送
-        if (!empty($message->getSendTime()) && strtotime($message->getSendTime()) > time()) {
-            $message->setSendImmediate(false);
+        if (!empty($notifyMessage->getSendTime()) && strtotime($notifyMessage->getSendTime()) > time()) {
+            $notifyMessage->setSendImmediate(false);
         }
 
         // 检查必须指定一种发送时间（是立即发送还是延时发送，或被动触发）
-        if (!$message->getSendImmediate() && empty($message->getSendTime()) && empty($message->getFkey())) {
+        if (!$notifyMessage->getSendImmediate() && empty($notifyMessage->getSendTime()) && empty($notifyMessage->getFkey())) {
             throw new LogicException('must specify a sending time');
         }
 
-        $notify = $message->getNotifyData();
+        $notify = $notifyMessage->getNotifyData();
 
-        if ($message->getSendImmediate()) {
+        if ($notifyMessage->getSendImmediate()) {
             // 如果是需要立即发送的通知，直接放入队列
             $this->pushNotifyToMQ($notify);
         } else {
@@ -74,8 +76,7 @@ class NotifyAgent
 
     private function pushNotifyToMQ(array $notify)
     {
-        BeanstalkdQueue::create(BeanstalkdQueue::MQ_SERVER)
-                        ->putToQueue(BeanstalkdQueue::QUEUE_NOTIFY, json_encode($notify));
+        $this->queue->putToQueue(BeanstalkdQueue::QUEUE_NOTIFY, json_encode($notify));
     }
 
     private function pushNotifyToDB(array $notify)
@@ -140,7 +141,7 @@ class NotifyAgent
      * @param $actualResponse
      * @return int
      */
-    private function parseStatus(array $notify, $actualResponse)
+    private function parseStatus(array $notify, $actualResponse = '')
     {
         if ($notify['needResponse'] === NotifyMessage::NEED_RESPONSE_NO) {  // 不需要应答的条件下，默认是成功的
             $status = NotifyMessage::STATUS_SUCCESS;
@@ -196,20 +197,56 @@ class NotifyAgent
 
         $delay = static::MAX_RETRY_TIMES * pow(2, $notify['retryTimes']);
 
-        BeanstalkdQueue::create(BeanstalkdQueue::MQ_SERVER)
-                        ->putToQueue(BeanstalkdQueue::QUEUE_NOTIFY, json_encode($notify), 2, $delay);
+        $this->queue->putToQueue(BeanstalkdQueue::QUEUE_NOTIFY, json_encode($notify), 2, $delay);
 
         // TODO 重试第三次发送短信通知
     }
 
-    public function sendNotify()
-    {
 
+    /**
+     * 触发通过 fKey（外键）创建的通知
+     * @param $fKey
+     * @param array $mergeData
+     * @return bool
+     */
+    public function triggerNotify($fKey, array $mergeData = [])
+    {
+        $notify = Notify::getInstance()->getByFKey($fKey);
+
+        if (isset($notify->id)) {
+            if (!empty($mergeData)) {
+                $oldData = NotifyMessage::parse($notify->data, $notify->contentType);
+                $newData = array_merge($oldData, $mergeData);
+                $notify->data = NotifyMessage::stringify($newData, $notify->contentType);
+            }
+
+            // 把需要被动触发的通知放入 READY 队列，然后从数据库删除
+            $this->queue->putToQueue(BeanstalkdQueue::QUEUE_NOTIFY, json_encode($notify));
+            Notify::getInstance()->deleteById($notify->id);
+
+            return true;
+        }
+
+        return false;
     }
 
-    public function cancelNotify()
+    /**
+     * 取消通过 fKey（外键）创建的通知
+     *
+     * @param $fKey
+     * @return bool
+     */
+    public function cancelNotify($fKey)
     {
+        $notify = Notify::getInstance()->getByFKey($fKey);
 
+        if (!isset($notify)) {
+            Notify::getInstance()->deleteById($notify->id);
+
+            return true;
+        }
+
+        return false;
     }
 
     /**

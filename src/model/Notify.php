@@ -32,7 +32,7 @@ class Notify
         'actualResponse',
         'runOnce',
         'queueName',
-        'fkey'
+        'fKey'
     ];
 
     private function __construct()
@@ -69,6 +69,15 @@ class Notify
     {
         $obj = $this->db
                     ->run("SELECT * FROM Notify WHERE id = :id", [':id' => $id])
+                    ->fetch();
+
+        return $obj;
+    }
+
+    public function getByFKey($fKey)
+    {
+        $obj = $this->db
+                    ->run("SELECT * FROM Notify WHERE fKey = :fKey", [':fKey' => $fKey])
                     ->fetch();
 
         return $obj;

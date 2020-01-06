@@ -29,7 +29,7 @@ class NotifyDaemon
     /**
      * 进程池，队列名为 `key`，子进程 ID 为值
      *
-     * 池子中有一个特殊的进程，它专门是用来处理延时的 notify 的，这个特殊的进程 key 是 self::TASK_PROCESS_DB
+     * 池子中有一个特殊的进程，它专门是用来处理延时的 notify 任务的，这个特殊的进程 key 是 self::TASK_PROCESS_DB
      *
      * @var array
      */

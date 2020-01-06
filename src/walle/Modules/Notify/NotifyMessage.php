@@ -49,8 +49,8 @@ class NotifyMessage
     private $queueName; // 队列名
     private $group;
 
-    // 被动触发要求
-    private $fkey = '';
+    // 被动触发时的外键
+    private $fKey = '';
 
     /**
      * NotifyMessage constructor.
@@ -80,9 +80,9 @@ class NotifyMessage
     public static function create($url)
     {
         $class = get_called_class();
-        $message = new $class($url);
+        $notifyMessage = new $class($url);
 
-        return $message;
+        return $notifyMessage;
     }
 
     public function getNotifyData()
@@ -95,11 +95,7 @@ class NotifyMessage
             }
         }
 
-        if (static::CONTENT_TYPE_JSON === $this->contentType) {
-            $data = json_encode($this->data);
-        } else {
-            $data = http_build_query($this->data);
-        }
+        $data = static::stringify($this->data, $this->contentType);
 
         $notify = [
             'caller' => $this->caller,
@@ -112,10 +108,60 @@ class NotifyMessage
             'expectResponse' => $this->expectResponse,
             'runOnce'       => $this->runOnce,
             'queueName'     => $this->queueName,
-            'fKey'          => $this->fkey
+            'fKey'          => $this->fKey
         ];
 
         return $notify;
+    }
+
+    /**
+     * 数组进行串化
+     *
+     * @param array $data
+     * @param $contentType
+     * @return string
+     * @throws InvalidArgumentException
+     */
+    public static function stringify(array $data, $contentType)
+    {
+        switch ($contentType) {
+            case static::CONTENT_TYPE_JSON:
+                $resultStr = json_encode($data);
+                break;
+            case static::CONTENT_TYPE_FORM:
+                $resultStr = http_build_query($data);
+                break;
+            default:
+                throw new InvalidArgumentException('unsupported Http Content-Type');
+                break;
+        }
+
+        return $resultStr;
+    }
+
+    /**
+     * 把字符串解析成原始的数组
+     *
+     * @param $str
+     * @param $contentType
+     * @return mixed
+     * @throws InvalidArgumentException
+     */
+    public static function parse($str, $contentType)
+    {
+        switch ($contentType) {
+            case static::CONTENT_TYPE_JSON:
+                $resultArr = json_decode($str, true);
+                break;
+            case static::CONTENT_TYPE_FORM:
+                parse_str($str, $resultArr);
+                break;
+            default:
+                throw new InvalidArgumentException('unsupported Http Content-Type');
+                break;
+        }
+
+        return $resultArr;
     }
 
     public function setCaller($caller)
@@ -165,7 +211,7 @@ class NotifyMessage
         if (in_array($contentType, [static::CONTENT_TYPE_FORM, static::CONTENT_TYPE_JSON])) {
             $this->contentType = $contentType;
         } else {
-            throw new UnexpectedValueException('http content-type wrong');
+            throw new InvalidArgumentException('unsupported Http Content-Type');
         }
 
         return $this;
@@ -292,15 +338,15 @@ class NotifyMessage
         return $this->group;
     }
 
-    public function setFkey($fkey)
+    public function setFKey($fKey)
     {
-        $this->fkey = $fkey;
+        $this->fKey = $fKey;
 
         return $this;
     }
 
     public function getFkey()
     {
-        return $this->fkey;
+        return $this->fKey;
     }
 }
