@@ -168,8 +168,8 @@ class NotifyDaemon
      * 3、判断如果进程池没有子进程处理消息中指定的 queueName  ，则 fork 新的子进程去处理
      *
      * 父进程以下情况会终止：
-     * 1、任务处理过程中有异常发生时优雅退出（退出码 69），退出后由 daemontools 重启
-     * 2、用户执行 kill -SIGUSR1 后优雅的退出（退出码为 138 ）128 + 信号值，退出后由 daemontools 重启
+     * 1、任务处理过程中有异常发生时优雅退出，退出后由 daemontools 重启（退出码为 69）
+     * 2、用户执行 kill -SIGUSR1 后优雅的退出，退出后由 daemontools 重启（退出码为 138 ）128 + 信号值
      * 3、用户执行 kill -SIGKILL 暴力的杀死，退出后由 daemontools 重启
      *
      * 注意事项：
@@ -274,7 +274,7 @@ class NotifyDaemon
      * 处理 DB 的子进程以下情况会终止：
      * 1、处理过程中父进程死了（被 kill -9 ），成为孤儿进程后被人为终止（退出码为 1）
      * 2、该子进程处理队列的过程中有异常发生被人为终止（退出码为 69）
-     * 3、父进程收到 SIGUSR1 信号后，向该子进程发送 SIGTERM 信号终止
+     * 3、父进程收到 SIGUSR1 信号后，向该子进程发送 SIGTERM 信号终止（退出码为 15）
      *
      * 注意事项：
      * 1、使用新的队列资源连接
@@ -325,7 +325,7 @@ class NotifyDaemon
      * 处理队列的子进程以下情况会终止：
      * 1、执行任务过程中父进程死了，成为孤儿进程后被人为终止（退出码为 1）
      * 2、执行任务过程中有异常发生被人为终止（退出码为 69）
-     * 3、该子进程对应的队列里没有消息时正常终止（退出码为0）
+     * 3、该子进程对应的队列里没有消息时正常终止（退出码为 0）
      *
      * 注意事项：参考 processDB 方法
      *
@@ -340,7 +340,7 @@ class NotifyDaemon
         try {
             while ($notifyRaw = $this->queue->getFromQueue($queueName, 5)) {
                 $notify = json_decode($notifyRaw, true);
-                NotifyAgent::getInstance()->realSend($notify);
+                NotifyAgent::getInstance()->send($notify);
 
                 if (posix_getpid() === 1) {
                     $this->debug(Process::getPids('processQueue '.$queueName.'become an orphan exit'));

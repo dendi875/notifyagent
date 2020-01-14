@@ -62,7 +62,7 @@ class NotifyAgent
             throw new LogicException('must specify a sending time');
         }
 
-        $notify = $notifyMessage->getNotifyData();
+        $notify = $notifyMessage->getNotify();
 
         if ($notifyMessage->getSendImmediate()) {
             // 如果是需要立即发送的通知，直接放入队列
@@ -86,12 +86,12 @@ class NotifyAgent
 
 
     /**
-     * 真实的发送通知
+     * 发送通知
      *
      * @param array $notify
      * @return bool
      */
-    public function realSend(array $notify)
+    public function send(array $notify)
     {
         set_time_limit(0);
 

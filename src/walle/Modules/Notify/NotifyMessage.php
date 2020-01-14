@@ -85,7 +85,7 @@ class NotifyMessage
         return $notifyMessage;
     }
 
-    public function getNotifyData()
+    public function getNotify()
     {
         if (empty($this->queueName)) {
             if (empty($this->group)) {
