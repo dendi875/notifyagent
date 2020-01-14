@@ -69,13 +69,13 @@
 
 
 常驻的主进程主要负责任务的分发和调度，主要做以下事：
-- 判断用于处理 `DB` 的进程有没有存活，如果没存话，则 `fork`
+- 每隔一段时间检查用于处理 `DB` 的进程有没有存活，如果没存话，则 `fork`
 - 取出 `notify` 队列中的消息，通过消息中的 `queueName` 属性再 `put` 到该队列中
 - 判断如果进程池没有子进程处理消息中指定的 `queueName`，则 `fork` 新的子进程去处理
 
 用于处理 `DB` 任务的子进程主要做的事情如下：
 
-- 只要不是孤儿进程就每隔 30 秒从数据库中查询可以发送的延时通知
+- 只要不是孤儿进程就每隔一段时间从数据库中查询可以发送的延时通知
 - 删除数据库中的通知
 - 把查询出来的通知 `put` 到 `notify` 队列中
 
@@ -342,3 +342,9 @@ fork success，for process PROCESS_DB：pid = 7400, ppid = 7387, pgid = 3472, si
 - 作为后台服务，要能做到**Graceful restart**
 - 作为后台服务，对资源的使用必须在可接受的范围以内
 - 子进程异常退出时，父进程有机会重建流程
+
+## 参考资料
+
+- [PHP 多进程编程](https://github.com/dendi875/PHP/blob/master/PHP%E5%A4%9A%E8%BF%9B%E7%A8%8B%E7%BC%96%E7%A8%8B.md)
+- [进程的守护神 - daemontools](https://github.com/dendi875/Linux/blob/master/daemontools%E7%A0%94%E7%A9%B6%E5%AD%A6%E4%B9%A0.md)
+
