@@ -2,9 +2,9 @@
 /**
  * Walle\Modules\Notify\NotifyMessage
  *
- * @author     <quan.zhang@guanaitong.com>
- * @createDate 2019-12-30 21:12:45
- * @copyright  Copyright (c) 2019 guanaitong.com
+ * @author     <dendi875@163.com>
+ * @createDate 2020-03-03 17:03:47
+ * @copyright  Copyright (c) 2019 https://github.com/dendi875
  */
 
 namespace Walle\Modules\Notify;
